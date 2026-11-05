@@ -1,0 +1,17 @@
+{
+  "name": "Papelitos - Amigo Secreto Familiar",
+  "short_name": "Papelitos",
+  "description": "Motor nostálgico de sorteo de Amigo Secreto para toda la familia sin registros.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#2a150c",
+  "theme_color": "#c83e31",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

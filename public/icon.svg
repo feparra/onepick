@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="100" fill="#2a150c" />
+  <rect x="36" y="36" width="440" height="440" rx="80" fill="#c83e31" stroke="#d4a017" stroke-width="12" />
+  <!-- Folded paper envelope -->
+  <rect x="116" y="146" width="280" height="220" rx="16" fill="#fffdf8" stroke="#2e6b4e" stroke-width="8" stroke-dasharray="8 8" />
+  <!-- Ribbon -->
+  <path d="M 256 146 L 256 366" stroke="#c83e31" stroke-width="14" />
+  <path d="M 116 256 L 396 256" stroke="#c83e31" stroke-width="14" />
+  <!-- Center seal -->
+  <circle cx="256" cy="256" r="38" fill="#d4a017" stroke="#fffdf8" stroke-width="6" />
+  <!-- Gift / Star text -->
+  <text x="256" y="268" font-size="32" text-anchor="middle" fill="#2a150c" font-weight="bold">🎄</text>
+</svg>

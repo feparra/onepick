@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
-import html2canvas from "html2canvas";
 import { Camera, Check, Sparkles, Gift, Crown } from "lucide-react";
 import { sound } from "@/lib/audio";
 import { useLanguage } from "@/lib/i18n";
@@ -19,6 +18,30 @@ interface UnfoldedPaperProps {
   onBackToLobby: () => void;
 }
 
+/**
+ * Helper to draw rounded rectangles on an HTML5 2D Canvas.
+ */
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
 export default function UnfoldedPaper({
   participantName,
   assignedTargetName,
@@ -30,7 +53,6 @@ export default function UnfoldedPaper({
   onBackToLobby,
 }: UnfoldedPaperProps) {
   const { t } = useLanguage();
-  const paperRef = useRef<HTMLDivElement>(null);
   const [myWishlist, setMyWishlist] = useState(initialMyWishlist || "");
   const [isSavingWishlist, setIsSavingWishlist] = useState(false);
   const [wishlistSaved, setWishlistSaved] = useState(false);
@@ -57,7 +79,6 @@ export default function UnfoldedPaper({
         if (typeof window !== "undefined" && navigator.vibrate) {
           navigator.vibrate([80, 40, 200]);
         }
-        // Golden confetti shower!
         confetti({
           particleCount: 110,
           spread: 90,
@@ -69,20 +90,186 @@ export default function UnfoldedPaper({
     }
   }, [goldenTicketName]);
 
+  /**
+   * Generates a high-resolution PNG directly via HTML5 Canvas 2D API.
+   * Avoids html2canvas crashes caused by Tailwind v4 oklch() color functions.
+   */
   const handleDownloadImage = async () => {
-    if (!paperRef.current) return;
     try {
       setIsCapturing(true);
-      const canvas = await html2canvas(paperRef.current, {
-        backgroundColor: "#2a150c",
-        scale: 2,
-      });
+
+      const width = 800;
+      const hasGold = Boolean(goldenTicketName);
+      const height = hasGold ? 1120 : 680;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      // 1. Warm wood background
+      ctx.fillStyle = "#2a150c";
+      ctx.fillRect(0, 0, width, height);
+
+      // 2. Main Paper Card
+      const cardX = 48;
+      const cardY = 48;
+      const cardW = width - 96;
+      const cardH = 560;
+
+      ctx.fillStyle = "#fffef7";
+      roundRect(ctx, cardX, cardY, cardW, cardH, 36);
+      ctx.fill();
+
+      // Dashed green border
+      ctx.save();
+      ctx.strokeStyle = "#2e6b4e";
+      ctx.lineWidth = 6;
+      ctx.setLineDash([14, 10]);
+      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 30);
+      ctx.stroke();
+      ctx.restore();
+
+      // Top badge ("Papelito de [Nombre]")
+      ctx.fillStyle = "#edf7f1";
+      roundRect(ctx, width / 2 - 180, cardY + 38, 360, 46, 23);
+      ctx.fill();
+      ctx.strokeStyle = "#a2cfb6";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = "#23533c";
+      ctx.font = "bold 22px Georgia, serif";
+      ctx.textAlign = "center";
+      ctx.fillText(
+        `✨ ${t.unfolded.paperOf} ${participantName}`,
+        width / 2,
+        cardY + 68
+      );
+
+      // Subtitle ("Tu amigo secreto es:")
+      ctx.fillStyle = "#614937";
+      ctx.font = "600 26px sans-serif";
+      ctx.fillText(t.unfolded.secretIs, width / 2, cardY + 135);
+
+      // Target Name Box
+      const boxX = cardX + 48;
+      const boxY = cardY + 165;
+      const boxW = cardW - 96;
+      const boxH = 140;
+
+      ctx.fillStyle = "#fdf5e6";
+      roundRect(ctx, boxX, boxY, boxW, boxH, 24);
+      ctx.fill();
+      ctx.strokeStyle = "#dfcaa7";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      ctx.fillStyle = "#b8291d";
+      ctx.font = "900 54px Georgia, serif";
+      ctx.fillText(assignedTargetName, width / 2, boxY + 88);
+
+      // Budget & Clue
+      let currentY = boxY + boxH + 45;
+      if (budget) {
+        ctx.fillStyle = "#285b40";
+        ctx.font = "bold 24px sans-serif";
+        ctx.fillText(`${t.unfolded.budgetSuggested} ${budget}`, width / 2, currentY);
+        currentY += 42;
+      }
+
+      if (targetWishlist) {
+        ctx.fillStyle = "#8f5a15";
+        ctx.font = "italic 22px sans-serif";
+        const snippet =
+          targetWishlist.length > 50
+            ? targetWishlist.substring(0, 50) + "..."
+            : targetWishlist;
+        ctx.fillText(
+          `🎁 ${t.unfolded.clueFrom} ${assignedTargetName}: "${snippet}"`,
+          width / 2,
+          currentY
+        );
+        currentY += 42;
+      }
+
+      // Footer note
+      ctx.fillStyle = "#7e6957";
+      ctx.font = "italic 19px sans-serif";
+      ctx.fillText(t.unfolded.familySecretNote, width / 2, cardY + cardH - 34);
+
+      // 3. Optional Golden Ticket Card
+      if (hasGold && goldenTicketName) {
+        const goldY = cardY + cardH + 36;
+        const goldH = 420;
+
+        const grad = ctx.createLinearGradient(cardX, goldY, cardX + cardW, goldY + goldH);
+        grad.addColorStop(0, "#fff6cc");
+        grad.addColorStop(0.5, "#ffd23f");
+        grad.addColorStop(1, "#ffef99");
+
+        ctx.fillStyle = grad;
+        roundRect(ctx, cardX, goldY, cardW, goldH, 36);
+        ctx.fill();
+
+        ctx.strokeStyle = "#b8860b";
+        ctx.lineWidth = 6;
+        ctx.stroke();
+
+        // Badge
+        ctx.fillStyle = "#785004";
+        roundRect(ctx, width / 2 - 200, goldY + 30, 400, 42, 21);
+        ctx.fill();
+
+        ctx.fillStyle = "#fff6cc";
+        ctx.font = "bold 20px sans-serif";
+        ctx.fillText(t.unfolded.goldenBadge, width / 2, goldY + 58);
+
+        // Title
+        ctx.fillStyle = "#4a3000";
+        ctx.font = "900 32px Georgia, serif";
+        ctx.fillText(`✨ ${t.unfolded.goldenTitle} ✨`, width / 2, goldY + 115);
+
+        // Decree text
+        ctx.fillStyle = "#5e3d02";
+        ctx.font = "bold 21px sans-serif";
+        ctx.fillText(t.unfolded.goldenDecree, width / 2, goldY + 158);
+
+        // Baby/Honoree Name Box
+        const gBoxY = goldY + 185;
+        ctx.fillStyle = "#fffdf2";
+        roundRect(ctx, boxX, gBoxY, boxW, 120, 24);
+        ctx.fill();
+        ctx.strokeStyle = "#b8860b";
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        ctx.fillStyle = "#945d00";
+        ctx.font = "900 48px Georgia, serif";
+        ctx.fillText(`👶 ${goldenTicketName} 👑`, width / 2, gBoxY + 76);
+
+        ctx.fillStyle = "#5c3c04";
+        ctx.font = "bold 20px sans-serif";
+        ctx.fillText(t.unfolded.goldenFooter, width / 2, goldY + goldH - 36);
+      }
+
+      // Trigger file download via Blob URL
+      const dataUrl = canvas.toDataURL("image/png");
+      const safeName = participantName
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-");
+
       const link = document.createElement("a");
-      link.download = `papelito-${participantName.toLowerCase().replace(/\s+/g, "-")}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.download = `papelito-${safeName || "secreto"}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     } catch (e) {
-      console.error("Error generating paper snapshot:", e);
+      console.error("Error generating paper image:", e);
     } finally {
       setIsCapturing(false);
     }
@@ -104,8 +291,7 @@ export default function UnfoldedPaper({
 
   return (
     <div className="w-full max-w-md mx-auto flex flex-col items-center gap-6 animate-fade-in pb-10">
-      {/* Printable / Capturable Container (includes both normal paper + Golden Ticket) */}
-      <div ref={paperRef} className="w-full flex flex-col gap-5 p-2 rounded-3xl">
+      <div className="w-full flex flex-col gap-5">
         {/* 1. Primary Secret Santa Paper Card */}
         <div
           className="w-full bg-[#fffef7] p-7 md:p-8 rounded-3xl border-4 border-dashed border-[#2e6b4e] shadow-2xl relative overflow-hidden"
@@ -174,7 +360,6 @@ export default function UnfoldedPaper({
                   "linear-gradient(135deg, #fff6cc 0%, #ffe680 35%, #ffd23f 70%, #ffef99 100%)",
               }}
             >
-              {/* Shimmering Golden Header */}
               <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-[#785004] text-[#fff6cc] shadow-sm mb-3">
                 <Crown className="w-4 h-4 text-[#ffd700]" />
                 <span>{t.unfolded.goldenBadge}</span>
@@ -188,7 +373,6 @@ export default function UnfoldedPaper({
                 {t.unfolded.goldenDecree}
               </p>
 
-              {/* Honoree / Baby's Name in Giant Gold Card */}
               <div className="my-4 py-4 px-4 bg-[#fffdf2] rounded-2xl border-3 border-[#b8860b] shadow-lg">
                 <span className="text-3xl md:text-4xl font-serif font-black text-[#945d00] tracking-tight block">
                   👶 {goldenTicketName} 👑
@@ -205,6 +389,7 @@ export default function UnfoldedPaper({
 
       {/* Action 1: Save photo */}
       <button
+        type="button"
         onClick={handleDownloadImage}
         disabled={isCapturing}
         className="w-full py-4 px-6 bg-[#c83e31] hover:bg-[#b03226] text-white text-xl font-bold rounded-2xl border-b-4 border-[#822118] shadow-xl flex items-center justify-center gap-3 active:translate-y-0.5 transition-all cursor-pointer"
@@ -230,6 +415,7 @@ export default function UnfoldedPaper({
               className="w-full px-4 py-3 text-base bg-white border-2 border-[#ccb893] rounded-xl text-[#2b1810] focus:outline-none focus:border-[#2e6b4e]"
             />
             <button
+              type="button"
               onClick={handleSaveWishlist}
               disabled={isSavingWishlist || !myWishlist.trim()}
               className="py-3 px-4 bg-[#2e6b4e] hover:bg-[#23533c] disabled:opacity-60 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"
@@ -250,6 +436,7 @@ export default function UnfoldedPaper({
 
       {/* Back to Lobby */}
       <button
+        type="button"
         onClick={onBackToLobby}
         className="w-full py-3 text-[#fdf8f0] font-bold text-base hover:underline text-center cursor-pointer"
       >

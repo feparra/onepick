@@ -1,20 +1,30 @@
+"use client";
+
 import Link from "next/link";
 import { Sparkles, HeartHandshake, ShieldCheck, Gift } from "lucide-react";
+import { useLanguage, LanguageSwitcher } from "@/lib/i18n";
 
 export default function Home() {
+  const { t } = useLanguage();
+
   return (
     <main className="w-full min-h-screen bg-[#2a150c] flex flex-col items-center justify-between p-4 md:p-8">
+      {/* Top Bar with Language Switcher */}
+      <div className="w-full max-w-xl flex items-center justify-end pt-2 pb-1">
+        <LanguageSwitcher />
+      </div>
+
       {/* Top Nostalgic Ribbon */}
-      <header className="w-full max-w-xl text-center pt-4 pb-2">
+      <header className="w-full max-w-xl text-center pt-2 pb-2">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#fdf7ee] border-2 border-[#d2be97] text-[#824e2d] text-xs md:text-sm font-bold shadow-md uppercase tracking-wider mb-3">
           <Sparkles className="w-4 h-4 text-[#c83e31]" />
-          Motor Nostálgico de Amigo Secreto
+          {t.home.ribbon}
         </div>
         <h1 className="text-4xl md:text-6xl font-serif font-black text-[#fdf8f0] tracking-tight drop-shadow-md">
-          Papelitos 🎄
+          {t.home.title}
         </h1>
         <p className="text-lg md:text-xl text-[#e6cbba] font-medium mt-2 max-w-md mx-auto">
-          El sorteo de toda la vida, ahora en el celular y sin enredos para la familia.
+          {t.home.subtitle}
         </p>
       </header>
 
@@ -26,25 +36,25 @@ export default function Home() {
           </div>
 
           <h2 className="text-2xl md:text-3xl font-serif font-extrabold text-[#2b1810] mb-3">
-            ¡Cero Fricción!
+            {t.home.zeroFrictionTitle}
           </h2>
 
           <ul className="text-left text-sm md:text-base text-[#573d2d] space-y-2.5 mb-6">
             <li className="flex items-center gap-2">
               <span className="text-lg">🚫</span>
-              <span><strong>Sin correos ni contraseñas.</strong></span>
+              <span><strong>{t.home.benefit1}</strong></span>
             </li>
             <li className="flex items-center gap-2">
               <span className="text-lg">📱</span>
-              <span><strong>No hay que descargar aplicaciones.</strong></span>
+              <span><strong>{t.home.benefit2}</strong></span>
             </li>
             <li className="flex items-center gap-2">
               <span className="text-lg">👴👵</span>
-              <span><strong>Letra gigante y fácil para los abuelos.</strong></span>
+              <span><strong>{t.home.benefit3}</strong></span>
             </li>
             <li className="flex items-center gap-2">
               <span className="text-lg">💬</span>
-              <span><strong>Se comparte por WhatsApp con 1 toque.</strong></span>
+              <span><strong>{t.home.benefit4}</strong></span>
             </li>
           </ul>
 
@@ -52,7 +62,7 @@ export default function Home() {
             href="/crear"
             className="w-full py-5 px-6 bg-[#2e6b4e] hover:bg-[#23533c] text-white text-xl md:text-2xl font-bold rounded-2xl border-b-4 border-[#163a28] shadow-xl flex items-center justify-center gap-3 active:translate-y-1 transition-all"
           >
-            <span>✨ Crear Sorteo Familiar</span>
+            <span>{t.home.createButton}</span>
           </Link>
         </div>
       </div>
@@ -62,25 +72,25 @@ export default function Home() {
         <div className="grid grid-cols-2 gap-3 text-left">
           <div className="p-3 bg-[#3a1d10] border border-[#522917] rounded-xl text-[#ded0c3]">
             <div className="flex items-center gap-1.5 font-bold text-xs uppercase text-[#e6a877] mb-1">
-              <ShieldCheck className="w-4 h-4" /> 100% Secreto
+              <ShieldCheck className="w-4 h-4" /> {t.home.badgeSecret}
             </div>
             <p className="text-xs text-[#c4b1a2]">
-              Algoritmo circular: nadie se saca a sí mismo.
+              {t.home.badgeSecretDesc}
             </p>
           </div>
 
           <div className="p-3 bg-[#3a1d10] border border-[#522917] rounded-xl text-[#ded0c3]">
             <div className="flex items-center gap-1.5 font-bold text-xs uppercase text-[#e6a877] mb-1">
-              <HeartHandshake className="w-4 h-4" /> Para Todos
+              <HeartHandshake className="w-4 h-4" /> {t.home.badgeEveryone}
             </div>
             <p className="text-xs text-[#c4b1a2]">
-              Diseñado con amor y nostalgia de los años 90s.
+              {t.home.badgeEveryoneDesc}
             </p>
           </div>
         </div>
 
         <p className="text-xs text-[#9c7863] mt-6">
-          Papelitos — Proyecto Open Source para la familia.
+          {t.common.footerText}
         </p>
       </footer>
     </main>

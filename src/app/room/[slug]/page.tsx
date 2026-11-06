@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
 import { ThemeProvider, ThemeKey } from "@/components/ThemeProvider";
+import { useLanguage, LanguageSwitcher } from "@/lib/i18n";
 import ParticipantList, { ParticipantItem } from "@/components/ParticipantList";
 import PaperTable from "@/components/PaperTable";
 import UnfoldedPaper from "@/components/UnfoldedPaper";
@@ -22,11 +23,13 @@ interface StoredToken {
   participantId: string;
   participantName: string;
   deviceToken: string;
+  pin?: string;
 }
 
 function RoomContent() {
   const params = useParams();
   const slug = typeof params?.slug === "string" ? params.slug : "";
+  const { t } = useLanguage();
 
   const [room, setRoom] = useState<RoomData | null>(null);
   const [participants, setParticipants] = useState<ParticipantItem[]>([]);
@@ -36,8 +39,9 @@ function RoomContent() {
   // Active view: "lobby" | "table" | "revealed"
   const [viewState, setViewState] = useState<"lobby" | "table" | "revealed">("lobby");
 
-  // Selected participant for current draw
+  // Selected participant & entered PIN for current draw
   const [currentParticipant, setCurrentParticipant] = useState<ParticipantItem | null>(null);
+  const [activePin, setActivePin] = useState<string>("");
   const [assignedTargetName, setAssignedTargetName] = useState<string>("");
   const [targetWishlist, setTargetWishlist] = useState<string | null>(null);
 
@@ -80,22 +84,22 @@ function RoomContent() {
         }
       }
     } catch (e: unknown) {
-      setErrorMessage(e instanceof Error ? e.message : "Error al cargar la sala");
+      setErrorMessage(e instanceof Error ? e.message : t.common.error);
     } finally {
       setIsLoading(false);
     }
-  }, [slug]);
+  }, [slug, t.common.error]);
 
   useEffect(() => {
     fetchRoom();
-    // Live polling every 5s so when family members pick their paper, everyone sees live badges
     const interval = setInterval(fetchRoom, 5000);
     return () => clearInterval(interval);
   }, [fetchRoom]);
 
-  // When user selects their name and confirms
-  const handleSelectParticipant = (p: ParticipantItem) => {
+  // When user selects their name and enters their valid PIN
+  const handleSelectParticipant = (p: ParticipantItem, pin: string) => {
     setCurrentParticipant(p);
+    setActivePin(pin);
     setViewState("table");
   };
 
@@ -110,6 +114,7 @@ function RoomContent() {
       body: JSON.stringify({
         participantId: currentParticipant.id,
         deviceToken,
+        pin: activePin,
       }),
     });
 
@@ -121,20 +126,19 @@ function RoomContent() {
     setAssignedTargetName(data.assignedTargetName);
     setTargetWishlist(data.targetWishlist || null);
 
-    // Save in localStorage so Roberto can re-open his ticket anytime
     const sessionObj: StoredToken = {
       participantId: currentParticipant.id,
       participantName: currentParticipant.name,
       deviceToken,
+      pin: activePin,
     };
     localStorage.setItem(`santa_token_${room.id}`, JSON.stringify(sessionObj));
     setSavedSession(sessionObj);
 
-    // Refresh participants list to update "Ya escogió" badge
     fetchRoom();
   };
 
-  // Re-open ticket if Roberto already drew
+  // Re-open ticket if user already drew
   const handleReopenSaved = async () => {
     if (!savedSession || !room) return;
     try {
@@ -145,6 +149,7 @@ function RoomContent() {
         body: JSON.stringify({
           participantId: savedSession.participantId,
           deviceToken: savedSession.deviceToken,
+          pin: savedSession.pin || "0000",
         }),
       });
 
@@ -166,7 +171,6 @@ function RoomContent() {
     }
   };
 
-  // Save wish clue
   const handleSaveWishlist = async (note: string) => {
     if (!currentParticipant) return;
     await fetch(`/api/rooms/${slug}/wishlist`, {
@@ -184,7 +188,7 @@ function RoomContent() {
     return (
       <div className="w-full min-h-screen bg-[#2a150c] flex flex-col items-center justify-center p-4 text-[#fdf8f0]">
         <Loader2 className="w-10 h-10 animate-spin text-[#c83e31] mb-3" />
-        <p className="text-lg font-serif">Preparando la mesa familiar...</p>
+        <p className="text-lg font-serif">{t.common.loading}</p>
       </div>
     );
   }
@@ -203,7 +207,7 @@ function RoomContent() {
             href="/"
             className="inline-block py-3 px-6 bg-[#2e6b4e] text-white font-bold rounded-xl"
           >
-            Ir al inicio
+            {t.common.backHome}
           </Link>
         </div>
       </div>
@@ -220,11 +224,14 @@ function RoomContent() {
               href="/"
               className="inline-flex items-center gap-1.5 text-xs text-[#debda6] hover:text-white font-bold"
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> Inicio
+              <ArrowLeft className="w-3.5 h-3.5" /> {t.common.backHome}
             </Link>
-            <span className="text-xs uppercase tracking-wider text-[#d29b72] font-bold">
-              Amigo Secreto Familiar
-            </span>
+            <div className="flex items-center gap-3">
+              <LanguageSwitcher />
+              <span className="text-xs uppercase tracking-wider text-[#d29b72] font-bold">
+                {t.lobby.subtitle}
+              </span>
+            </div>
           </div>
 
           <h1 className="text-3xl md:text-5xl font-serif font-black text-[#fdf8f0] tracking-tight">
@@ -234,12 +241,12 @@ function RoomContent() {
           <div className="flex items-center justify-center gap-3 mt-2 text-xs md:text-sm text-[#e6cfbf] font-medium">
             {room.budget && (
               <span className="bg-[#422214] px-3 py-1 rounded-full border border-[#5c311e]">
-                💰 Presupuesto: <strong>{room.budget}</strong>
+                💰 {t.lobby.budget} <strong>{room.budget}</strong>
               </span>
             )}
             {room.event_date && (
               <span className="bg-[#422214] px-3 py-1 rounded-full border border-[#5c311e]">
-                📅 Fecha: <strong>{room.event_date}</strong>
+                📅 {t.lobby.date} <strong>{room.event_date}</strong>
               </span>
             )}
           </div>
@@ -294,11 +301,10 @@ function RoomContent() {
           </main>
         )}
 
-        {/* Footer info */}
         <footer className="mt-8 text-center text-xs text-[#8f6d57]">
           <p className="flex items-center justify-center gap-1 font-semibold">
             <Sparkles className="w-3.5 h-3.5 text-[#c83e31]" />
-            Papelitos — Desarrollado para familias de todas las edades
+            {t.common.madeForFamilies}
           </p>
         </footer>
       </div>

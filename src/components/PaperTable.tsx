@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sound } from "@/lib/audio";
 import { useTheme } from "./ThemeProvider";
+import { useLanguage } from "@/lib/i18n";
 import UnfoldedPaper from "./UnfoldedPaper";
 
 interface PaperTableProps {
@@ -30,10 +31,10 @@ export default function PaperTable({
   onBackToLobby,
 }: PaperTableProps) {
   const { config } = useTheme();
+  const { t } = useLanguage();
   const [stage, setStage] = useState<"ready" | "shuffling" | "spread" | "unfolding" | "revealed">("ready");
   const [selectedPaperIndex, setSelectedPaperIndex] = useState<number | null>(null);
 
-  // Generate organic paper positions on the dining table
   const visibleCount = Math.min(Math.max(totalPapers, 6), 12);
   const [paperPositions, setPaperPositions] = useState(
     Array.from({ length: visibleCount }, (_, i) => ({
@@ -52,10 +53,9 @@ export default function PaperTable({
       navigator.vibrate([60, 40, 60, 40, 80]);
     }
 
-    // Spin in center then distribute randomly like papers dropped onto the dining table
     setTimeout(() => {
       const spreadPositions = paperPositions.map((p, idx) => {
-        const col = (idx % 3) - 1; // -1, 0, 1
+        const col = (idx % 3) - 1;
         const row = Math.floor(idx / 3) - 1;
         return {
           id: p.id,
@@ -94,21 +94,21 @@ export default function PaperTable({
     <div
       className={`min-h-[82vh] w-full max-w-xl mx-auto flex flex-col items-center justify-between p-4 md:p-6 rounded-3xl ${config.tableClass} border-8 ${config.tableBorder} shadow-2xl relative overflow-hidden tartan-pattern`}
     >
-      {/* Table Runner / Dining Header */}
+      {/* Header */}
       <div className="z-10 text-center bg-[#fdf8f0] px-6 py-4 rounded-2xl border-4 border-[#c83e31] shadow-lg max-w-md w-full">
         <p className="text-xs md:text-sm uppercase tracking-widest text-[#8c583a] font-bold">
-          Turno de {participantName}
+          {t.table.turnOf} {participantName}
         </p>
         <h2 className="text-xl md:text-2xl font-serif font-extrabold text-[#2b1810] mt-1">
-          {stage === "ready" && "Paso 1: Revuelve los papelitos en la mesa"}
-          {stage === "shuffling" && "¡Revolviendo bien los papelitos...!"}
-          {stage === "spread" && "Paso 2: Toca UN papelito para abrirlo"}
-          {stage === "unfolding" && "Abriendo tu papelito doblado..."}
-          {stage === "revealed" && "¡Amigo secreto revelado!"}
+          {stage === "ready" && t.table.step1}
+          {stage === "shuffling" && t.table.step1Shuffling}
+          {stage === "spread" && t.table.step2}
+          {stage === "unfolding" && t.table.step2Unfolding}
+          {stage === "revealed" && t.table.stepRevealed}
         </h2>
       </div>
 
-      {/* Interactive Central Table Area */}
+      {/* Central Area */}
       <div className="relative flex-1 w-full flex items-center justify-center my-6 min-h-[340px]">
         <AnimatePresence>
           {stage !== "revealed" &&
@@ -148,7 +148,7 @@ export default function PaperTable({
                 >
                   <div className="bg-[#fffdf8] px-2.5 py-1 rounded border border-[#d6be96] shadow-sm">
                     <span className="text-xs font-serif font-black text-[#2b1810]">
-                      {stage === "spread" ? "Tócame" : config.emoji}
+                      {stage === "spread" ? t.table.touchMe : config.emoji}
                     </span>
                   </div>
                 </motion.button>
@@ -156,7 +156,6 @@ export default function PaperTable({
             })}
         </AnimatePresence>
 
-        {/* Revealed Paper */}
         {stage === "revealed" && (
           <UnfoldedPaper
             participantName={participantName}
@@ -170,7 +169,7 @@ export default function PaperTable({
         )}
       </div>
 
-      {/* Bottom Button Action for Seniors & Family */}
+      {/* Bottom Button */}
       {stage !== "revealed" && (
         <div className="z-10 w-full max-w-md">
           {stage === "ready" && (
@@ -178,14 +177,14 @@ export default function PaperTable({
               onClick={handleShuffle}
               className="w-full py-5 bg-[#2e6b4e] hover:bg-[#23533c] text-white text-xl md:text-2xl font-bold rounded-2xl border-b-4 border-[#163b28] shadow-2xl active:translate-y-1 transition-all flex items-center justify-center gap-3 cursor-pointer"
             >
-              <span>🎲 Revolver los Papelitos</span>
+              <span>{t.table.shuffleButton}</span>
             </button>
           )}
 
           {stage === "spread" && (
             <div className="bg-[#fcf8f0] px-4 py-3 rounded-2xl border-2 border-[#c83e31] text-center shadow-md animate-pulse">
               <p className="text-base font-bold text-[#2b1810]">
-                👆 Toca cualquiera de los papelitos de arriba
+                {t.table.touchPaperPrompt}
               </p>
             </div>
           )}
@@ -194,7 +193,7 @@ export default function PaperTable({
             onClick={onBackToLobby}
             className="w-full py-2.5 mt-2 text-[#fcf8f0] text-sm font-semibold hover:underline text-center"
           >
-            ⬅️ Cancelar y volver a la lista
+            {t.table.cancelButton}
           </button>
         </div>
       )}

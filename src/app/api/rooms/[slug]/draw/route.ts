@@ -8,16 +8,16 @@ export async function POST(
   try {
     const { slug } = await params;
     const body = await request.json();
-    const { participantId, deviceToken } = body;
+    const { participantId, deviceToken, pin } = body;
 
-    if (!participantId || !deviceToken) {
+    if (!participantId || !deviceToken || !pin) {
       return NextResponse.json(
-        { error: "Identificador de participante o token de dispositivo inválido." },
+        { error: "Identificador de participante, token y PIN de 4 dígitos son requeridos." },
         { status: 400 }
       );
     }
 
-    const result = await drawPaper(slug, participantId, deviceToken);
+    const result = await drawPaper(slug, participantId, deviceToken, pin);
 
     return NextResponse.json(result);
   } catch (error: unknown) {

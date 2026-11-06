@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
+import { LanguageProvider } from "@/lib/i18n";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -15,12 +16,12 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Papelitos - Amigo Secreto Familiar",
+  title: "Papelitos - Amigo Secreto Familiar / Family Secret Santa",
   description:
     "El sorteo de Amigo Secreto más fácil, cálido y nostálgico. Sin contraseñas, sin registros, directo al papelito.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/icon.svg",
   },
 };
 
@@ -40,7 +41,9 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${fraunces.variable} ${plusJakarta.variable}`}>
       <body className="min-h-screen bg-[#2a150c] text-[#2b1810] antialiased flex flex-col justify-between">
-        {children}
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   );

@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, X, ArrowLeft, Share2, Check, Sparkles } from "lucide-react";
 import { THEMES, ThemeKey } from "@/components/ThemeProvider";
+import { useLanguage, LanguageSwitcher } from "@/lib/i18n";
 
 export default function CrearSalaPage() {
   const router = useRouter();
+  const { t } = useLanguage();
 
   // Form states
   const [selectedTheme, setSelectedTheme] = useState<ThemeKey>("christmas_90s");
@@ -63,12 +65,12 @@ export default function CrearSalaPage() {
     }
 
     if (participants.length < 3) {
-      setErrorMessage("Agrega al menos 3 personas a la lista familiar.");
+      setErrorMessage(t.crear.minParticipants);
       return;
     }
 
     if (!adminPin || adminPin.length !== 4) {
-      setErrorMessage("El PIN del anfitrión debe ser de 4 dígitos.");
+      setErrorMessage(t.crear.adminPinLabel);
       return;
     }
 
@@ -94,7 +96,7 @@ export default function CrearSalaPage() {
 
       setCreatedSlug(data.slug);
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : "Error inesperado");
+      setErrorMessage(err instanceof Error ? err.message : t.common.error);
     } finally {
       setIsLoading(false);
     }
@@ -121,27 +123,30 @@ export default function CrearSalaPage() {
   return (
     <div className="w-full min-h-screen bg-[#2a150c] p-4 md:p-8 flex flex-col items-center">
       <div className="w-full max-w-lg">
-        {/* Top return navigation */}
+        {/* Top return navigation & Language Switcher */}
         <div className="flex items-center justify-between mb-4">
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-[#e4cdbd] hover:text-white font-bold text-sm"
           >
-            <ArrowLeft className="w-4 h-4" /> Volver al inicio
+            <ArrowLeft className="w-4 h-4" /> {t.common.backHome}
           </Link>
-          <span className="text-xs uppercase font-bold tracking-wider text-[#d29b72]">
-            Paso del Anfitrión
-          </span>
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher />
+            <span className="text-xs uppercase font-bold tracking-wider text-[#d29b72]">
+              {t.crear.stepHost}
+            </span>
+          </div>
         </div>
 
         {/* Creation Card */}
         <div className="bg-[#fcf8f0] rounded-3xl p-6 md:p-8 border-4 border-[#c83e31] shadow-2xl">
           <div className="text-center mb-6">
             <h1 className="text-3xl font-serif font-black text-[#2b1810]">
-              Crear Nuevo Sorteo
+              {t.crear.heading}
             </h1>
             <p className="text-sm text-[#664b38] mt-1">
-              Configura la mesa en 1 minuto para toda la familia.
+              {t.crear.subheading}
             </p>
           </div>
 
@@ -149,7 +154,7 @@ export default function CrearSalaPage() {
             {/* 1. Theme selector */}
             <div>
               <label className="block text-sm font-bold uppercase tracking-wider text-[#543b2b] mb-2">
-                1. Elige la Festividad:
+                {t.crear.step1}
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {(Object.keys(THEMES) as ThemeKey[]).map((key) => {
@@ -180,13 +185,13 @@ export default function CrearSalaPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-[#3d2618] mb-1">
-                  2. Nombre del Sorteo o Familia:
+                  {t.crear.step2}
                 </label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ej: Navidad Familia Parra"
+                  placeholder={t.crear.titlePlaceholder}
                   className="w-full px-4 py-3 bg-white border-2 border-[#ccb894] rounded-xl text-lg font-bold text-[#2b1810] focus:outline-none focus:border-[#2e6b4e]"
                   required
                 />
@@ -195,25 +200,25 @@ export default function CrearSalaPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-[#5c3e2b] mb-1">
-                    Presupuesto:
+                    {t.crear.budgetLabel}
                   </label>
                   <input
                     type="text"
                     value={budget}
                     onChange={(e) => setBudget(e.target.value)}
-                    placeholder="Ej: $30 USD"
+                    placeholder={t.crear.budgetPlaceholder}
                     className="w-full px-3 py-2.5 bg-white border-2 border-[#ccb894] rounded-xl text-sm font-semibold text-[#2b1810] focus:outline-none focus:border-[#2e6b4e]"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-[#5c3e2b] mb-1">
-                    Fecha del Evento:
+                    {t.crear.dateLabel}
                   </label>
                   <input
                     type="text"
                     value={eventDate}
                     onChange={(e) => setEventDate(e.target.value)}
-                    placeholder="Ej: 24 de Diciembre"
+                    placeholder={t.crear.datePlaceholder}
                     className="w-full px-3 py-2.5 bg-white border-2 border-[#ccb894] rounded-xl text-sm font-semibold text-[#2b1810] focus:outline-none focus:border-[#2e6b4e]"
                   />
                 </div>
@@ -224,10 +229,10 @@ export default function CrearSalaPage() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-bold text-[#3d2618]">
-                  3. Participantes ({participants.length}):
+                  {t.crear.participantsLabel} ({participants.length}):
                 </label>
                 <span className="text-xs text-[#825c42] font-semibold">
-                  Mínimo 3 personas
+                  {t.crear.minParticipants}
                 </span>
               </div>
 
@@ -237,7 +242,7 @@ export default function CrearSalaPage() {
                   value={participantInput}
                   onChange={(e) => setParticipantInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Escribe un nombre (ej: Tío Roberto)"
+                  placeholder={t.crear.participantInputPlaceholder}
                   className="flex-1 px-4 py-3 bg-white border-2 border-[#ccb894] rounded-xl text-base font-bold text-[#2b1810] focus:outline-none focus:border-[#2e6b4e]"
                 />
                 <button
@@ -249,7 +254,6 @@ export default function CrearSalaPage() {
                 </button>
               </div>
 
-              {/* Chips list */}
               <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 bg-[#f0e4cf] rounded-2xl border border-[#d6c4a5]">
                 {participants.map((name, index) => (
                   <span
@@ -272,7 +276,7 @@ export default function CrearSalaPage() {
             {/* 4. Admin PIN */}
             <div>
               <label className="block text-xs font-bold text-[#5c3e2b] mb-1">
-                PIN de 4 dígitos del Anfitrión (para emergencias):
+                {t.crear.adminPinLabel}
               </label>
               <input
                 type="password"
@@ -298,14 +302,14 @@ export default function CrearSalaPage() {
             >
               <Sparkles className="w-6 h-6" />
               <span>
-                {isLoading ? "Revolviendo y organizando..." : "Crear Mesa y Revolver Papelitos"}
+                {isLoading ? t.crear.submittingButton : t.crear.submitButton}
               </span>
             </button>
           </form>
         </div>
       </div>
 
-      {/* Success & WhatsApp Share Modal */}
+      {/* Success Modal */}
       {createdSlug && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
           <div className="bg-[#fffef7] border-6 border-[#2e6b4e] rounded-3xl max-w-md w-full p-6 md:p-8 text-center shadow-2xl relative">
@@ -314,15 +318,14 @@ export default function CrearSalaPage() {
             </div>
 
             <h3 className="text-3xl font-serif font-black text-[#2b1810] mb-2">
-              ¡Mesa Creada! 🎄
+              {t.crear.modalTitle}
             </h3>
 
             <p className="text-sm md:text-base text-[#5c3e2e] leading-relaxed mb-6">
-              Los papelitos ya están asignados matemáticamente sin fallos. Ahora solo envía este enlace al grupo familiar:
+              {t.crear.modalDesc}
             </p>
 
             <div className="flex flex-col gap-3">
-              {/* Giant WhatsApp Share Button */}
               <a
                 href={`https://wa.me/?text=${whatsappMessage}`}
                 target="_blank"
@@ -330,10 +333,9 @@ export default function CrearSalaPage() {
                 className="w-full py-5 px-6 bg-[#25D366] hover:bg-[#1fb858] text-white text-xl font-bold rounded-2xl border-b-4 border-[#128C7E] shadow-xl flex items-center justify-center gap-3 active:translate-y-1 transition-all"
               >
                 <Share2 className="w-7 h-7" />
-                <span>📲 Enviar a WhatsApp</span>
+                <span>{t.crear.whatsappButton}</span>
               </a>
 
-              {/* Copy Link Button */}
               <button
                 onClick={handleCopyLink}
                 className="w-full py-3.5 bg-[#f5ecda] hover:bg-[#ebdcc4] text-[#422919] font-bold rounded-xl border border-[#c4ae8c] flex items-center justify-center gap-2 transition-all"
@@ -341,19 +343,18 @@ export default function CrearSalaPage() {
                 {copiedLink ? (
                   <>
                     <Check className="w-5 h-5 text-[#2e6b4e]" />
-                    <span>¡Enlace copiado al portapapeles!</span>
+                    <span>{t.crear.linkCopied}</span>
                   </>
                 ) : (
-                  <span>📋 Copiar enlace de la sala</span>
+                  <span>{t.crear.copyLinkButton}</span>
                 )}
               </button>
 
-              {/* Go directly to the room */}
               <button
                 onClick={() => router.push(`/room/${createdSlug}`)}
                 className="w-full py-4 bg-[#2b1810] hover:bg-[#1a0e09] text-white text-lg font-bold rounded-2xl shadow-md mt-2"
               >
-                👉 Ir a la Sala de Papelitos
+                {t.crear.goToRoomButton}
               </button>
             </div>
           </div>

@@ -1,8 +1,9 @@
 import { supabase, isSupabaseConfigured, RoomRecord, ParticipantRecord } from "./supabase";
+import { sqliteStore } from "./sqliteStore";
 import { generateSecretSantaAssignments } from "./derangement";
 import crypto from "crypto";
 
-// Fallback in-memory storage when Supabase is not yet configured in .env.local
+// Fallback in-memory storage
 declare global {
   // eslint-disable-next-line no-var
   var __memoryRooms: Map<string, RoomRecord> | undefined;
@@ -53,14 +54,12 @@ export async function createRoom(input: CreateRoomInput) {
   const slug = generateSlug(title);
   const roomId = crypto.randomUUID();
 
-  // Prepare participants with initial UUIDs
   const participantsWithIds = validNames.map((name) => ({
     id: crypto.randomUUID(),
     room_id: roomId,
     name,
   }));
 
-  // Run Hamiltonian cycle derangement
   const assignments = generateSecretSantaAssignments(
     participantsWithIds.map((p) => ({ id: p.id, name: p.name }))
   );
@@ -98,10 +97,7 @@ export async function createRoom(input: CreateRoomInput) {
       event_date: roomRecord.event_date,
       admin_pin: roomRecord.admin_pin,
     });
-
-    if (roomError) {
-      throw new Error(`Error al crear la sala en Supabase: ${roomError.message}`);
-    }
+    if (roomError) throw new Error(`Supabase error: ${roomError.message}`);
 
     const { error: partError } = await supabase.from("participants").insert(
       fullParticipants.map((p) => ({
@@ -112,12 +108,10 @@ export async function createRoom(input: CreateRoomInput) {
         has_drawn: false,
       }))
     );
-
-    if (partError) {
-      throw new Error(`Error al crear participantes en Supabase: ${partError.message}`);
-    }
+    if (partError) throw new Error(`Supabase error: ${partError.message}`);
+  } else if (sqliteStore.isAvailable()) {
+    sqliteStore.createRoom(roomRecord, fullParticipants);
   } else {
-    // Memory fallback
     memoryRooms.set(slug, roomRecord);
     memoryParticipants.set(roomId, fullParticipants);
   }
@@ -140,19 +134,23 @@ export async function getRoomBySlug(slug: string) {
       .eq("slug", slug)
       .single();
 
-    if (roomError || !roomData) {
-      return null;
-    }
+    if (roomError || !roomData) return null;
     room = roomData as RoomRecord;
 
     const { data: partData, error: partError } = await supabase
       .from("participants")
-      .select("id, room_id, name, has_drawn, drawn_at, wishlist_note, device_token")
+      .select("id, room_id, name, has_drawn, drawn_at, wishlist_note, recovery_pin")
       .eq("room_id", room.id)
       .order("name", { ascending: true });
 
     if (!partError && partData) {
       participants = partData as ParticipantRecord[];
+    }
+  } else if (sqliteStore.isAvailable()) {
+    const result = sqliteStore.getRoomBySlug(slug);
+    if (result) {
+      room = result.room;
+      participants = result.participants;
     }
   } else {
     room = memoryRooms.get(slug) || null;
@@ -163,13 +161,14 @@ export async function getRoomBySlug(slug: string) {
 
   if (!room) return null;
 
-  // Sanitize participants: DO NOT reveal assigned_to_id to public lobby
+  // Sanitize participants: DO NOT reveal assigned_to_id or the actual PIN
   const publicParticipants = participants.map((p) => ({
     id: p.id,
     name: p.name,
     has_drawn: Boolean(p.has_drawn),
     wishlist_note: p.wishlist_note,
     drawn_at: p.drawn_at,
+    has_pin: Boolean(p.recovery_pin && p.recovery_pin.trim()),
   }));
 
   return {
@@ -185,58 +184,68 @@ export async function getRoomBySlug(slug: string) {
   };
 }
 
-export async function drawPaper(slug: string, participantId: string, deviceToken: string) {
+export async function drawPaper(
+  slug: string,
+  participantId: string,
+  deviceToken: string,
+  pin: string
+) {
+  if (!pin || pin.trim().length !== 4) {
+    throw new Error("Debes ingresar un PIN de 4 dígitos.");
+  }
+  const cleanPin = pin.trim();
+
   if (isSupabaseConfigured && supabase) {
     const { data: room, error: rErr } = await supabase
       .from("rooms")
       .select("id")
       .eq("slug", slug)
       .single();
-
     if (rErr || !room) throw new Error("Sala no encontrada.");
 
-    // Fetch participant
     const { data: part, error: pErr } = await supabase
       .from("participants")
-      .select("id, name, assigned_to_id, has_drawn, device_token")
+      .select("id, name, assigned_to_id, has_drawn, device_token, recovery_pin")
       .eq("id", participantId)
       .eq("room_id", room.id)
       .single();
-
     if (pErr || !part) throw new Error("Participante no encontrado.");
 
     if (part.has_drawn) {
-      // Check if it's the same device re-opening
-      if (part.device_token && part.device_token === deviceToken) {
-        // Find assigned participant name
-        const { data: target } = await supabase
-          .from("participants")
-          .select("name, wishlist_note")
-          .eq("id", part.assigned_to_id)
-          .single();
-
-        return {
-          assignedTargetName: target?.name || "Tu amigo secreto",
-          targetWishlist: target?.wishlist_note || null,
-          isRevisit: true,
-        };
+      // Reopen validation: verify PIN
+      if (part.recovery_pin && part.recovery_pin !== cleanPin) {
+        throw new Error("El PIN de 4 dígitos es incorrecto.");
       }
-      throw new Error("Este papelito ya fue tomado previamente.");
+      const { data: target } = await supabase
+        .from("participants")
+        .select("name, wishlist_note")
+        .eq("id", part.assigned_to_id)
+        .single();
+
+      return {
+        assignedTargetName: target?.name || "Tu amigo secreto",
+        targetWishlist: target?.wishlist_note || null,
+        isRevisit: true,
+      };
     }
 
-    // Mark as drawn
+    // First time drawing: verify or set PIN
+    if (part.recovery_pin && part.recovery_pin !== cleanPin) {
+      throw new Error("El PIN de 4 dígitos es incorrecto.");
+    }
+
     const { error: updateErr } = await supabase
       .from("participants")
       .update({
         has_drawn: true,
         drawn_at: new Date().toISOString(),
         device_token: deviceToken,
+        recovery_pin: cleanPin,
       })
       .eq("id", participantId);
 
     if (updateErr) throw new Error("No se pudo registrar la selección del papel.");
 
-    // Retrieve target name
     const { data: target } = await supabase
       .from("participants")
       .select("name, wishlist_note")
@@ -246,6 +255,37 @@ export async function drawPaper(slug: string, participantId: string, deviceToken
     return {
       assignedTargetName: target?.name || "Tu amigo secreto",
       targetWishlist: target?.wishlist_note || null,
+      isRevisit: false,
+    };
+  } else if (sqliteStore.isAvailable()) {
+    const data = sqliteStore.getRoomBySlug(slug);
+    if (!data) throw new Error("Sala no encontrada.");
+
+    const part = data.participants.find((p) => p.id === participantId);
+    if (!part) throw new Error("Participante no encontrado.");
+
+    const targetPart = data.participants.find((p) => p.id === part.assigned_to_id);
+
+    if (part.has_drawn) {
+      if (part.recovery_pin && part.recovery_pin !== cleanPin) {
+        throw new Error("El PIN de 4 dígitos es incorrecto.");
+      }
+      return {
+        assignedTargetName: targetPart?.name || "Tu amigo secreto",
+        targetWishlist: targetPart?.wishlist_note || null,
+        isRevisit: true,
+      };
+    }
+
+    if (part.recovery_pin && part.recovery_pin !== cleanPin) {
+      throw new Error("El PIN de 4 dígitos es incorrecto.");
+    }
+
+    sqliteStore.updateParticipantDrawn(participantId, deviceToken, cleanPin);
+
+    return {
+      assignedTargetName: targetPart?.name || "Tu amigo secreto",
+      targetWishlist: targetPart?.wishlist_note || null,
       isRevisit: false,
     };
   } else {
@@ -260,19 +300,24 @@ export async function drawPaper(slug: string, participantId: string, deviceToken
     const targetPart = parts.find((p) => p.id === part.assigned_to_id);
 
     if (part.has_drawn) {
-      if (part.device_token && part.device_token === deviceToken) {
-        return {
-          assignedTargetName: targetPart?.name || "Tu amigo secreto",
-          targetWishlist: targetPart?.wishlist_note || null,
-          isRevisit: true,
-        };
+      if (part.recovery_pin && part.recovery_pin !== cleanPin) {
+        throw new Error("El PIN de 4 dígitos es incorrecto.");
       }
-      throw new Error("Este papelito ya fue tomado previamente.");
+      return {
+        assignedTargetName: targetPart?.name || "Tu amigo secreto",
+        targetWishlist: targetPart?.wishlist_note || null,
+        isRevisit: true,
+      };
+    }
+
+    if (part.recovery_pin && part.recovery_pin !== cleanPin) {
+      throw new Error("El PIN de 4 dígitos es incorrecto.");
     }
 
     part.has_drawn = true;
     part.drawn_at = new Date().toISOString();
     part.device_token = deviceToken;
+    part.recovery_pin = cleanPin;
 
     return {
       assignedTargetName: targetPart?.name || "Tu amigo secreto",
@@ -288,8 +333,10 @@ export async function updateWishlist(slug: string, participantId: string, wishli
       .from("participants")
       .update({ wishlist_note: wishlistNote.trim() })
       .eq("id", participantId);
-
     if (error) throw new Error("No se pudo guardar la pista.");
+    return { success: true };
+  } else if (sqliteStore.isAvailable()) {
+    sqliteStore.updateParticipantWishlist(participantId, wishlistNote.trim());
     return { success: true };
   } else {
     const room = memoryRooms.get(slug);

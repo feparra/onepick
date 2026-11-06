@@ -14,6 +14,7 @@ interface PaperTableProps {
   budget?: string | null;
   targetWishlist?: string | null;
   initialMyWishlist?: string | null;
+  goldenTicketName?: string | null;
   onPaperOpened: () => Promise<void>;
   onSaveWishlist?: (note: string) => Promise<void>;
   onBackToLobby: () => void;
@@ -26,6 +27,7 @@ export default function PaperTable({
   budget,
   targetWishlist,
   initialMyWishlist,
+  goldenTicketName,
   onPaperOpened,
   onSaveWishlist,
   onBackToLobby,
@@ -163,6 +165,7 @@ export default function PaperTable({
             budget={budget}
             targetWishlist={targetWishlist}
             initialMyWishlist={initialMyWishlist}
+            goldenTicketName={goldenTicketName}
             onSaveWishlist={onSaveWishlist}
             onBackToLobby={onBackToLobby}
           />

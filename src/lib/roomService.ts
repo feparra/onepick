@@ -37,10 +37,19 @@ export interface CreateRoomInput {
   eventDate?: string;
   adminPin: string;
   participantNames: string[];
+  goldenTicketName?: string;
 }
 
 export async function createRoom(input: CreateRoomInput) {
-  const { title, theme = "christmas_90s", budget, eventDate, adminPin, participantNames } = input;
+  const {
+    title,
+    theme = "christmas_90s",
+    budget,
+    eventDate,
+    adminPin,
+    participantNames,
+    goldenTicketName,
+  } = input;
 
   if (!title || !title.trim()) {
     throw new Error("El título de la sala es obligatorio.");
@@ -76,11 +85,18 @@ export async function createRoom(input: CreateRoomInput) {
     recovery_pin: null,
   }));
 
+  // Pack goldenTicketName into theme string so existing Supabase schema works without migration
+  const cleanTheme = (theme || "christmas_90s").split("|golden:")[0];
+  const packedTheme =
+    goldenTicketName && goldenTicketName.trim()
+      ? `${cleanTheme}|golden:${goldenTicketName.trim()}`
+      : cleanTheme;
+
   const roomRecord: RoomRecord = {
     id: roomId,
     slug,
     title: title.trim(),
-    theme,
+    theme: packedTheme,
     budget: budget?.trim() || null,
     event_date: eventDate?.trim() || null,
     admin_pin: adminPin.trim(),
@@ -161,6 +177,10 @@ export async function getRoomBySlug(slug: string) {
 
   if (!room) return null;
 
+  // Unpack theme and optional goldenTicketName
+  const [cleanTheme, goldenPart] = (room.theme || "christmas_90s").split("|golden:");
+  const goldenTicketName = goldenPart ? goldenPart.trim() : null;
+
   // Sanitize participants: DO NOT reveal assigned_to_id or the actual PIN
   const publicParticipants = participants.map((p) => ({
     id: p.id,
@@ -176,9 +196,10 @@ export async function getRoomBySlug(slug: string) {
       id: room.id,
       slug: room.slug,
       title: room.title,
-      theme: room.theme,
+      theme: cleanTheme,
       budget: room.budget,
       event_date: room.event_date,
+      golden_ticket_name: goldenTicketName,
     },
     participants: publicParticipants,
   };
@@ -212,7 +233,6 @@ export async function drawPaper(
     if (pErr || !part) throw new Error("Participante no encontrado.");
 
     if (part.has_drawn) {
-      // Reopen validation: verify PIN
       if (part.recovery_pin && part.recovery_pin !== cleanPin) {
         throw new Error("El PIN de 4 dígitos es incorrecto.");
       }
@@ -229,7 +249,6 @@ export async function drawPaper(
       };
     }
 
-    // First time drawing: verify or set PIN
     if (part.recovery_pin && part.recovery_pin !== cleanPin) {
       throw new Error("El PIN de 4 dígitos es incorrecto.");
     }
@@ -289,7 +308,6 @@ export async function drawPaper(
       isRevisit: false,
     };
   } else {
-    // Memory fallback
     const room = memoryRooms.get(slug);
     if (!room) throw new Error("Sala no encontrada.");
 

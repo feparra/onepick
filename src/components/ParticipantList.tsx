@@ -225,32 +225,40 @@ export default function ParticipantList({
                 : t.lobby.createPinDesc}
             </p>
 
-            <form onSubmit={handlePinSubmit} className="flex flex-col gap-3">
-              <input
-                type="password"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={4}
-                autoFocus
-                value={pinValue}
-                onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ""))}
-                placeholder={t.lobby.pinPlaceholder}
-                className="w-full py-3.5 px-4 bg-white border-2 border-[#ccb894] rounded-xl text-center text-2xl font-mono tracking-widest text-[#2b1810] focus:outline-none focus:border-[#2e6b4e]"
-                required
-              />
-
-              {!pinModalCandidate.has_pin && (
+            <form onSubmit={handlePinSubmit} className="flex flex-col gap-3 text-left">
+              <div>
+                <label className="block text-xs font-bold text-[#3d2618] mb-1 text-center">
+                  {t.lobby.pinLabel}
+                </label>
                 <input
                   type="password"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   maxLength={4}
-                  value={pinConfirmValue}
-                  onChange={(e) => setPinConfirmValue(e.target.value.replace(/\D/g, ""))}
-                  placeholder={t.lobby.pinConfirmPlaceholder}
+                  autoFocus
+                  value={pinValue}
+                  onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ""))}
                   className="w-full py-3.5 px-4 bg-white border-2 border-[#ccb894] rounded-xl text-center text-2xl font-mono tracking-widest text-[#2b1810] focus:outline-none focus:border-[#2e6b4e]"
                   required
                 />
+              </div>
+
+              {!pinModalCandidate.has_pin && (
+                <div>
+                  <label className="block text-xs font-bold text-[#3d2618] mb-1 text-center">
+                    {t.lobby.pinConfirmLabel}
+                  </label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={4}
+                    value={pinConfirmValue}
+                    onChange={(e) => setPinConfirmValue(e.target.value.replace(/\D/g, ""))}
+                    className="w-full py-3.5 px-4 bg-white border-2 border-[#ccb894] rounded-xl text-center text-2xl font-mono tracking-widest text-[#2b1810] focus:outline-none focus:border-[#2e6b4e]"
+                    required
+                  />
+                </div>
               )}
 
               {pinError && (

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, X, ArrowLeft, Share2, Check, Sparkles } from "lucide-react";
+import { Plus, X, ArrowLeft, Share2, Check, Sparkles, Crown, ChevronDown, ChevronUp } from "lucide-react";
 import { THEMES, ThemeKey } from "@/components/ThemeProvider";
 import { useLanguage, LanguageSwitcher } from "@/lib/i18n";
 
@@ -11,20 +11,21 @@ export default function CrearSalaPage() {
   const router = useRouter();
   const { t } = useLanguage();
 
-  // Form states
+  // Clean empty form states (no pre-filled placeholders)
   const [selectedTheme, setSelectedTheme] = useState<ThemeKey>("christmas_90s");
-  const [title, setTitle] = useState("Navidad en Familia");
-  const [budget, setBudget] = useState("$30 USD");
-  const [eventDate, setEventDate] = useState("24 de Diciembre");
-  const [adminPin, setAdminPin] = useState("1234");
+  const [title, setTitle] = useState("");
+  const [budget, setBudget] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [adminPin, setAdminPin] = useState("");
 
-  // Participant list state
+  // Participant list state (starts empty)
   const [participantInput, setParticipantInput] = useState("");
-  const [participants, setParticipants] = useState<string[]>([
-    "Abuela Rosa",
-    "Papá Carlos",
-    "Mamá Elena",
-  ]);
+  const [participants, setParticipants] = useState<string[]>([]);
+
+  // Special Golden Ticket state (hidden/expandable for the baby/honoree)
+  const [showSpecialMenu, setShowSpecialMenu] = useState(false);
+  const [goldenEnabled, setGoldenEnabled] = useState(false);
+  const [goldenTicketName, setGoldenTicketName] = useState("");
 
   // Loading & error & modal state
   const [isLoading, setIsLoading] = useState(false);
@@ -36,7 +37,7 @@ export default function CrearSalaPage() {
     const trimmed = participantInput.trim();
     if (!trimmed) return;
     if (participants.some((p) => p.toLowerCase() === trimmed.toLowerCase())) {
-      setErrorMessage(`"${trimmed}" ya está en la lista.`);
+      setErrorMessage(t.crear.duplicateParticipantError);
       return;
     }
     setParticipants([...participants, trimmed]);
@@ -60,7 +61,7 @@ export default function CrearSalaPage() {
     setErrorMessage(null);
 
     if (!title.trim()) {
-      setErrorMessage("Por favor escribe un nombre para el sorteo.");
+      setErrorMessage(t.crear.missingTitleError);
       return;
     }
 
@@ -86,12 +87,16 @@ export default function CrearSalaPage() {
           eventDate,
           adminPin,
           participantNames: participants,
+          goldenTicketName:
+            goldenEnabled && goldenTicketName.trim()
+              ? goldenTicketName.trim()
+              : undefined,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "No se pudo crear la sala.");
+        throw new Error(data.error || t.common.error);
       }
 
       setCreatedSlug(data.slug);
@@ -108,9 +113,7 @@ export default function CrearSalaPage() {
       : "";
 
   const whatsappMessage = encodeURIComponent(
-    `🎄 ¡Hola familia! Ya está listo nuestro sorteo de Amigo Secreto ("${title}").\n\n` +
-      `👉 Entra a este enlace, busca tu nombre y abre tu papelito:\n${roomUrl}\n\n` +
-      `🤫 ¡Recuerda no decirle a nadie quién te tocó!`
+    t.crear.whatsappTemplate(title, roomUrl)
   );
 
   const handleCopyLink = () => {
@@ -151,7 +154,7 @@ export default function CrearSalaPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-            {/* 1. Theme selector */}
+            {/* 1. Theme selector (translated via i18n) */}
             <div>
               <label className="block text-sm font-bold uppercase tracking-wider text-[#543b2b] mb-2">
                 {t.crear.step1}
@@ -159,13 +162,14 @@ export default function CrearSalaPage() {
               <div className="grid grid-cols-2 gap-2">
                 {(Object.keys(THEMES) as ThemeKey[]).map((key) => {
                   const th = THEMES[key];
+                  const translatedTheme = t.themes[key];
                   const isSelected = selectedTheme === key;
                   return (
                     <button
                       type="button"
                       key={key}
                       onClick={() => setSelectedTheme(key)}
-                      className={`p-3 rounded-2xl border-3 text-left transition-all ${
+                      className={`p-3 rounded-2xl border-3 text-left transition-all cursor-pointer ${
                         isSelected
                           ? "bg-[#f5e6ce] border-[#c83e31] shadow-md scale-102"
                           : "bg-white border-[#d8c5a8] hover:bg-[#faf4ec]"
@@ -173,7 +177,10 @@ export default function CrearSalaPage() {
                     >
                       <span className="text-2xl block mb-1">{th.emoji}</span>
                       <p className="text-xs md:text-sm font-bold text-[#2b1810] leading-tight">
-                        {th.name}
+                        {translatedTheme.name}
+                      </p>
+                      <p className="text-[11px] text-[#785944] mt-0.5 leading-snug">
+                        {translatedTheme.tagline}
                       </p>
                     </button>
                   );
@@ -191,7 +198,6 @@ export default function CrearSalaPage() {
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder={t.crear.titlePlaceholder}
                   className="w-full px-4 py-3 bg-white border-2 border-[#ccb894] rounded-xl text-lg font-bold text-[#2b1810] focus:outline-none focus:border-[#2e6b4e]"
                   required
                 />
@@ -206,7 +212,6 @@ export default function CrearSalaPage() {
                     type="text"
                     value={budget}
                     onChange={(e) => setBudget(e.target.value)}
-                    placeholder={t.crear.budgetPlaceholder}
                     className="w-full px-3 py-2.5 bg-white border-2 border-[#ccb894] rounded-xl text-sm font-semibold text-[#2b1810] focus:outline-none focus:border-[#2e6b4e]"
                   />
                 </div>
@@ -218,7 +223,6 @@ export default function CrearSalaPage() {
                     type="text"
                     value={eventDate}
                     onChange={(e) => setEventDate(e.target.value)}
-                    placeholder={t.crear.datePlaceholder}
                     className="w-full px-3 py-2.5 bg-white border-2 border-[#ccb894] rounded-xl text-sm font-semibold text-[#2b1810] focus:outline-none focus:border-[#2e6b4e]"
                   />
                 </div>
@@ -229,7 +233,7 @@ export default function CrearSalaPage() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-bold text-[#3d2618]">
-                  {t.crear.participantsLabel} ({participants.length}):
+                  {t.crear.step3} ({participants.length}):
                 </label>
                 <span className="text-xs text-[#825c42] font-semibold">
                   {t.crear.minParticipants}
@@ -242,50 +246,112 @@ export default function CrearSalaPage() {
                   value={participantInput}
                   onChange={(e) => setParticipantInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={t.crear.participantInputPlaceholder}
                   className="flex-1 px-4 py-3 bg-white border-2 border-[#ccb894] rounded-xl text-base font-bold text-[#2b1810] focus:outline-none focus:border-[#2e6b4e]"
                 />
                 <button
                   type="button"
                   onClick={handleAddParticipant}
-                  className="px-5 bg-[#2e6b4e] hover:bg-[#23533c] text-white font-bold rounded-xl flex items-center justify-center text-xl shadow-md active:scale-95 transition-all"
+                  className="px-5 bg-[#2e6b4e] hover:bg-[#23533c] text-white font-bold rounded-xl flex items-center justify-center text-xl shadow-md active:scale-95 transition-all cursor-pointer"
                 >
                   <Plus className="w-6 h-6" />
                 </button>
               </div>
 
-              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 bg-[#f0e4cf] rounded-2xl border border-[#d6c4a5]">
-                {participants.map((name, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#fffefc] border border-[#cfbd9f] rounded-full text-sm font-bold text-[#2b1810] shadow-xs"
-                  >
-                    <span>{name}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveParticipant(index)}
-                      className="w-5 h-5 rounded-full hover:bg-[#e8d5bc] flex items-center justify-center text-[#802a20]"
+              <div className="flex flex-wrap gap-2 min-h-[56px] max-h-48 overflow-y-auto p-3 bg-[#f0e4cf] rounded-2xl border border-[#d6c4a5] items-center">
+                {participants.length === 0 ? (
+                  <p className="text-xs text-[#7d5d47] italic w-full text-center">
+                    {t.crear.emptyParticipantsHint}
+                  </p>
+                ) : (
+                  participants.map((name, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#fffefc] border border-[#cfbd9f] rounded-full text-sm font-bold text-[#2b1810] shadow-xs"
                     >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </span>
-                ))}
+                      <span>{name}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveParticipant(index)}
+                        className="w-5 h-5 rounded-full hover:bg-[#e8d5bc] flex items-center justify-center text-[#802a20]"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
+                  ))
+                )}
               </div>
             </div>
 
             {/* 4. Admin PIN */}
             <div>
               <label className="block text-xs font-bold text-[#5c3e2b] mb-1">
-                {t.crear.adminPinLabel}
+                {t.crear.step4}
               </label>
               <input
                 type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 maxLength={4}
                 value={adminPin}
-                onChange={(e) => setAdminPin(e.target.value)}
+                onChange={(e) => setAdminPin(e.target.value.replace(/\D/g, ""))}
                 className="w-32 px-3 py-2 bg-white border-2 border-[#ccb894] rounded-xl text-center text-lg font-mono tracking-widest text-[#2b1810] focus:outline-none focus:border-[#2e6b4e]"
                 required
               />
+            </div>
+
+            {/* Secret / Discreet Special Feature: Golden Ticket (Papelito Dorado) */}
+            <div className="border-t border-[#e0d0b8] pt-3">
+              <button
+                type="button"
+                onClick={() => setShowSpecialMenu(!showSpecialMenu)}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#9c6b19] hover:text-[#78500d] transition-colors cursor-pointer"
+              >
+                <Crown className="w-4 h-4 text-[#d4a017]" />
+                <span>{t.crear.goldenToggleButton}</span>
+                {showSpecialMenu ? (
+                  <ChevronUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                )}
+              </button>
+
+              {showSpecialMenu && (
+                <div className="mt-3 p-4 rounded-2xl bg-gradient-to-br from-[#fff9e6] via-[#fef2c8] to-[#fbe49c] border-2 border-[#d4a017] shadow-inner space-y-3 animate-fade-in">
+                  <div className="flex items-center gap-2 text-[#6e4907] font-serif font-extrabold text-sm">
+                    <Sparkles className="w-4 h-4 text-[#b8860b]" />
+                    <span>{t.crear.goldenActiveTitle}</span>
+                  </div>
+
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={goldenEnabled}
+                      onChange={(e) => setGoldenEnabled(e.target.checked)}
+                      className="mt-1 w-5 h-5 accent-[#b8860b] rounded cursor-pointer"
+                    />
+                    <span className="text-xs md:text-sm font-bold text-[#4a3208] leading-snug">
+                      {t.crear.goldenCheckboxLabel}
+                    </span>
+                  </label>
+
+                  {goldenEnabled && (
+                    <div className="pt-1 space-y-1.5">
+                      <label className="block text-xs font-bold text-[#5c3e09]">
+                        {t.crear.goldenNameLabel}
+                      </label>
+                      <input
+                        type="text"
+                        value={goldenTicketName}
+                        onChange={(e) => setGoldenTicketName(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-white border-2 border-[#d4a017] rounded-xl text-base font-bold text-[#2b1810] focus:outline-none focus:border-[#946b00]"
+                      />
+                      <p className="text-[11px] text-[#6e5015] leading-relaxed">
+                        {t.crear.goldenHelper}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {errorMessage && (

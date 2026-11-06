@@ -17,6 +17,7 @@ interface RoomData {
   theme: string;
   budget: string | null;
   event_date: string | null;
+  golden_ticket_name?: string | null;
 }
 
 interface StoredToken {
@@ -65,7 +66,7 @@ function RoomContent() {
     try {
       const res = await fetch(`/api/rooms/${slug}`);
       if (!res.ok) {
-        throw new Error("No se pudo cargar la información de la sala.");
+        throw new Error(t.common.roomNotFoundDesc);
       }
       const data = await res.json();
       setRoom(data.room);
@@ -88,7 +89,7 @@ function RoomContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [slug, t.common.error]);
+  }, [slug, t.common.error, t.common.roomNotFoundDesc]);
 
   useEffect(() => {
     fetchRoom();
@@ -120,7 +121,7 @@ function RoomContent() {
 
     const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.error || "Error al abrir el papelito");
+      throw new Error(data.error || t.common.error);
     }
 
     setAssignedTargetName(data.assignedTargetName);
@@ -165,7 +166,7 @@ function RoomContent() {
       setTargetWishlist(data.targetWishlist || null);
       setViewState("revealed");
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Error al re-abrir tu papelito");
+      alert(e instanceof Error ? e.message : t.common.error);
     } finally {
       setIsLoading(false);
     }
@@ -198,10 +199,10 @@ function RoomContent() {
       <div className="w-full min-h-screen bg-[#2a150c] flex flex-col items-center justify-center p-4 text-center">
         <div className="bg-[#fffef7] border-4 border-[#c83e31] p-6 rounded-3xl max-w-md w-full shadow-2xl">
           <h2 className="text-2xl font-serif font-black text-[#2b1810] mb-2">
-            Sala no encontrada
+            {t.common.roomNotFound}
           </h2>
           <p className="text-base text-[#614534] mb-6">
-            {errorMessage || "El enlace no corresponde a ninguna sala activa."}
+            {errorMessage || t.common.roomNotFoundDesc}
           </p>
           <Link
             href="/"
@@ -274,6 +275,7 @@ function RoomContent() {
               budget={room.budget}
               targetWishlist={targetWishlist}
               initialMyWishlist={currentParticipant.wishlist_note}
+              goldenTicketName={room.golden_ticket_name}
               onPaperOpened={handlePaperOpened}
               onSaveWishlist={handleSaveWishlist}
               onBackToLobby={() => {
@@ -292,6 +294,7 @@ function RoomContent() {
               budget={room.budget}
               targetWishlist={targetWishlist}
               initialMyWishlist={currentParticipant.wishlist_note}
+              goldenTicketName={room.golden_ticket_name}
               onSaveWishlist={handleSaveWishlist}
               onBackToLobby={() => {
                 setViewState("lobby");
@@ -318,7 +321,7 @@ export default function RoomPage() {
       fallback={
         <div className="w-full min-h-screen bg-[#2a150c] flex flex-col items-center justify-center p-4 text-[#fdf8f0]">
           <Loader2 className="w-10 h-10 animate-spin text-[#c83e31] mb-3" />
-          <p className="text-lg font-serif">Cargando sala...</p>
+          <p className="text-lg font-serif">...</p>
         </div>
       }
     >

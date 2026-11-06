@@ -4,7 +4,15 @@ import { createRoom } from "@/lib/roomService";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, theme, budget, eventDate, adminPin, participantNames } = body;
+    const {
+      title,
+      theme,
+      budget,
+      eventDate,
+      adminPin,
+      participantNames,
+      goldenTicketName,
+    } = body;
 
     if (!title || !adminPin || !participantNames || !Array.isArray(participantNames)) {
       return NextResponse.json(
@@ -27,6 +35,7 @@ export async function POST(request: Request) {
       eventDate,
       adminPin,
       participantNames,
+      goldenTicketName,
     });
 
     return NextResponse.json(result, { status: 201 });

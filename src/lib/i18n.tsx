@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { ThemeKey } from "@/components/ThemeProvider";
 
 export type Language = "es" | "en";
 
@@ -16,7 +17,16 @@ export interface Translations {
     madeForFamilies: string;
     save: string;
     saving: string;
+    roomNotFound: string;
+    roomNotFoundDesc: string;
   };
+  themes: Record<
+    ThemeKey,
+    {
+      name: string;
+      tagline: string;
+    }
+  >;
   home: {
     ribbon: string;
     title: string;
@@ -40,20 +50,25 @@ export interface Translations {
     step2: string;
     step3: string;
     step4: string;
-    titlePlaceholder: string;
     budgetLabel: string;
-    budgetPlaceholder: string;
     dateLabel: string;
-    datePlaceholder: string;
     participantsLabel: string;
     minParticipants: string;
-    participantInputPlaceholder: string;
+    emptyParticipantsHint: string;
+    duplicateParticipantError: string;
+    missingTitleError: string;
     adminPinLabel: string;
+    goldenToggleButton: string;
+    goldenActiveTitle: string;
+    goldenCheckboxLabel: string;
+    goldenNameLabel: string;
+    goldenHelper: string;
     submitButton: string;
     submittingButton: string;
     modalTitle: string;
     modalDesc: string;
     whatsappButton: string;
+    whatsappTemplate: (title: string, url: string) => string;
     copyLinkButton: string;
     linkCopied: string;
     goToRoomButton: string;
@@ -76,13 +91,12 @@ export interface Translations {
     confirmNo: string;
     alreadyTakenTitle: string;
     alreadyTakenDesc: string;
-    // PIN security
     createPinTitle: string;
     createPinDesc: string;
     enterPinTitle: string;
     enterPinDesc: string;
-    pinPlaceholder: string;
-    pinConfirmPlaceholder: string;
+    pinLabel: string;
+    pinConfirmLabel: string;
     pinMismatch: string;
     pinInvalidLength: string;
     pinIncorrect: string;
@@ -107,11 +121,14 @@ export interface Translations {
     budgetSuggested: string;
     clueFrom: string;
     familySecretNote: string;
+    goldenBadge: string;
+    goldenTitle: string;
+    goldenDecree: string;
+    goldenFooter: string;
     savePhotoButton: string;
     savingPhoto: string;
     wishlistQuestion: string;
     wishlistSub: string;
-    wishlistPlaceholder: string;
     saveWishlistButton: string;
     wishlistSaved: string;
     backToList: string;
@@ -131,6 +148,26 @@ const dictionaries: Record<Language, Translations> = {
       madeForFamilies: "Papelitos — Desarrollado para familias de todas las edades",
       save: "Guardar",
       saving: "Guardando...",
+      roomNotFound: "Sala no encontrada",
+      roomNotFoundDesc: "El enlace no corresponde a ninguna sala activa.",
+    },
+    themes: {
+      christmas_90s: {
+        name: "Navidad en Familia (90s)",
+        tagline: "Mantel escocés rojo y pino cálido",
+      },
+      amor_amistad: {
+        name: "Amor y Amistad",
+        tagline: "Madera suave, rosa vintage y terracota",
+      },
+      reyes_magos: {
+        name: "Día de Reyes",
+        tagline: "Azul medianoche y destellos dorados",
+      },
+      custom_party: {
+        name: "Fiesta & Celebración",
+        tagline: "Confeti noventero y colores pastel",
+      },
     },
     home: {
       ribbon: "Motor Nostálgico de Amigo Secreto",
@@ -154,21 +191,27 @@ const dictionaries: Record<Language, Translations> = {
       step1: "1. Elige la Festividad:",
       step2: "2. Nombre del Sorteo o Familia:",
       step3: "3. Participantes",
-      step4: "4. PIN del Anfitrión (4 dígitos para emergencias):",
-      titlePlaceholder: "Ej: Navidad Familia Parra",
+      step4: "4. PIN del Anfitrión (4 dígitos):",
       budgetLabel: "Presupuesto:",
-      budgetPlaceholder: "Ej: $30 USD",
       dateLabel: "Fecha del Evento:",
-      datePlaceholder: "Ej: 24 de Diciembre",
       participantsLabel: "Participantes",
       minParticipants: "Mínimo 3 personas",
-      participantInputPlaceholder: "Escribe un nombre (ej: Tío Roberto)",
-      adminPinLabel: "PIN de 4 dígitos del Anfitrión (para emergencias):",
+      emptyParticipantsHint: "Aún no has agregado participantes. Escribe cada nombre arriba y presiona (+).",
+      duplicateParticipantError: "Ese nombre ya está en la lista.",
+      missingTitleError: "Por favor escribe un nombre para el sorteo.",
+      adminPinLabel: "PIN de 4 dígitos del Anfitrión:",
+      goldenToggleButton: "👑 Modo Especial: Papelito Dorado",
+      goldenActiveTitle: "✨ Papelito Dorado VIP (Sorpresa Familiar)",
+      goldenCheckboxLabel: "Hacer que a TODOS les salga un 2do papelito dorado obligatorio",
+      goldenNameLabel: "Nombre del homenajeado / bebé:",
+      goldenHelper: "Al abrir su papel normal, a cada participante le saldrá también un Papelito Dorado sorpresa anunciando que su segundo Amigo Secreto obligatorio es esta persona.",
       submitButton: "Crear Mesa y Revolver Papelitos",
       submittingButton: "Revolviendo y organizando...",
       modalTitle: "¡Mesa Creada! 🎄",
       modalDesc: "Los papelitos ya están asignados matemáticamente sin fallos. Ahora solo envía este enlace al grupo familiar:",
       whatsappButton: "📲 Enviar a WhatsApp",
+      whatsappTemplate: (title: string, url: string) =>
+        `🎄 ¡Hola familia! Ya está listo nuestro sorteo de Amigo Secreto ("${title}").\n\n👉 Entra a este enlace, busca tu nombre y abre tu papelito:\n${url}\n\n🤫 ¡Recuerda no decirle a nadie quién te tocó!`,
       copyLinkButton: "📋 Copiar enlace de la sala",
       linkCopied: "¡Enlace copiado al portapapeles!",
       goToRoomButton: "👉 Ir a la Sala de Papelitos",
@@ -190,13 +233,13 @@ const dictionaries: Record<Language, Translations> = {
       confirmYes: "✅ Sí, soy",
       confirmNo: "❌ No, me equivoqué",
       alreadyTakenTitle: "Papelito ya retirado",
-      alreadyTakenDesc: "ya sacó su papelito. Si eres tú y cambiaste de celular, ingresa con tu PIN o pide ayuda al anfitrión.",
+      alreadyTakenDesc: "ya sacó su papelito. Si eres tú y cambiaste de celular, ingresa con tu PIN.",
       createPinTitle: "Crea tu PIN de seguridad (4 dígitos)",
       createPinDesc: "Elige 4 números que recuerdes. Este PIN garantizará que nadie más pueda ver tu papelito.",
       enterPinTitle: "Ingresa tu PIN de 4 dígitos",
-      enterPinDesc: "Para proteger tu privacidad, ingresa el PIN de 4 dígitos que definiste para",
-      pinPlaceholder: "PIN (4 números)",
-      pinConfirmPlaceholder: "Repite el PIN",
+      enterPinDesc: "Para proteger tu privacidad, ingresa el PIN de 4 dígitos de",
+      pinLabel: "PIN de 4 dígitos:",
+      pinConfirmLabel: "Confirmar PIN:",
       pinMismatch: "Los 4 números del PIN no coinciden.",
       pinInvalidLength: "El PIN debe tener exactamente 4 dígitos.",
       pinIncorrect: "El PIN ingresado es incorrecto.",
@@ -221,11 +264,14 @@ const dictionaries: Record<Language, Translations> = {
       budgetSuggested: "💰 Presupuesto sugerido:",
       clueFrom: "Pista dejada por",
       familySecretNote: "¡No se lo digas a nadie de la familia! Guárdalo bien en tu memoria o toma una foto.",
+      goldenBadge: "👑 DECRETO REAL FAMILIAR",
+      goldenTitle: "¡PAPELITO DORADO SORPRESA!",
+      goldenDecree: "Por ley oficial de la familia, tu 2do (¡y más importante!) Amigo Secreto obligatorio es:",
+      goldenFooter: "🍼 ¡El rey de la fiesta! Nadie se salva de traerle su regalo especial 🎁",
       savePhotoButton: "📸 Guardar Foto de mi Papelito",
       savingPhoto: "Guardando foto...",
       wishlistQuestion: "🎁 ¿Qué te gustaría que te regalen a ti?",
-      wishlistSub: "Escribe una pequeña pista para quien te sacó a ti (ej: 'dulces, libros o medias talla L').",
-      wishlistPlaceholder: "Escribe tu idea de regalo aquí...",
+      wishlistSub: "Escribe una pequeña pista para quien te sacó a ti:",
       saveWishlistButton: "Guardar mi pista",
       wishlistSaved: "¡Pista guardada con éxito!",
       backToList: "⬅️ Volver a la lista de la familia",
@@ -243,6 +289,26 @@ const dictionaries: Record<Language, Translations> = {
       madeForFamilies: "Papelitos — Designed for families of all ages",
       save: "Save",
       saving: "Saving...",
+      roomNotFound: "Room not found",
+      roomNotFoundDesc: "This link does not match any active room.",
+    },
+    themes: {
+      christmas_90s: {
+        name: "Family Christmas (90s)",
+        tagline: "Red tartan plaid & warm pine wood",
+      },
+      amor_amistad: {
+        name: "Valentine's & Friendship",
+        tagline: "Soft wood, vintage rose & terracotta",
+      },
+      reyes_magos: {
+        name: "Three Kings Day / Epiphany",
+        tagline: "Starry midnight blue & gold trim",
+      },
+      custom_party: {
+        name: "Party & Celebration",
+        tagline: "90s retro confetti & warm pastels",
+      },
     },
     home: {
       ribbon: "Nostalgic Secret Santa Engine",
@@ -266,21 +332,27 @@ const dictionaries: Record<Language, Translations> = {
       step1: "1. Choose Holiday Theme:",
       step2: "2. Name of Exchange or Family:",
       step3: "3. Participants",
-      step4: "4. Host PIN (4 digits for emergencies):",
-      titlePlaceholder: "e.g., Parra Family Christmas",
+      step4: "4. Host PIN (4 digits):",
       budgetLabel: "Budget:",
-      budgetPlaceholder: "e.g., $30 USD",
       dateLabel: "Event Date:",
-      datePlaceholder: "e.g., December 24th",
       participantsLabel: "Participants",
       minParticipants: "Minimum 3 people",
-      participantInputPlaceholder: "Type a name (e.g., Uncle Robert)",
-      adminPinLabel: "Host 4-digit PIN (for admin recovery):",
+      emptyParticipantsHint: "No participants added yet. Type each name above and press (+).",
+      duplicateParticipantError: "That name is already on the list.",
+      missingTitleError: "Please enter a name for the exchange.",
+      adminPinLabel: "Host 4-digit PIN:",
+      goldenToggleButton: "👑 Special Mode: Golden Ticket",
+      goldenActiveTitle: "✨ VIP Golden Ticket (Family Surprise)",
+      goldenCheckboxLabel: "Give EVERYONE a mandatory 2nd Golden Ticket",
+      goldenNameLabel: "Honoree / Baby's Name:",
+      goldenHelper: "After opening their normal paper, every participant will also get a surprise Golden Ticket announcing their mandatory 2nd Secret Santa is this special person!",
       submitButton: "Set Table & Shuffle Papers",
       submittingButton: "Shuffling and organizing...",
       modalTitle: "Table Created! 🎄",
       modalDesc: "Secret papers are mathematically assigned with zero flaws. Now share this link with your family group:",
       whatsappButton: "📲 Share on WhatsApp",
+      whatsappTemplate: (title: string, url: string) =>
+        `🎄 Hi family! Our Secret Santa exchange ("${title}") is ready!\n\n👉 Tap this link, pick your name, and unfold your secret paper:\n${url}\n\n🤫 Remember to keep it a secret!`,
       copyLinkButton: "📋 Copy room link",
       linkCopied: "Link copied to clipboard!",
       goToRoomButton: "👉 Go to Exchange Room",
@@ -302,13 +374,13 @@ const dictionaries: Record<Language, Translations> = {
       confirmYes: "✅ Yes, I am",
       confirmNo: "❌ No, go back",
       alreadyTakenTitle: "Paper already picked",
-      alreadyTakenDesc: "has already drawn their paper. If this is you and you changed phones, enter your PIN or ask the host.",
+      alreadyTakenDesc: "has already drawn their paper. If this is you on another phone, enter your PIN.",
       createPinTitle: "Create your Security PIN (4 digits)",
       createPinDesc: "Choose 4 digits you will remember. This PIN protects your paper so no one else can open it.",
       enterPinTitle: "Enter your 4-digit PIN",
       enterPinDesc: "To protect your privacy, enter the 4-digit PIN set for",
-      pinPlaceholder: "PIN (4 digits)",
-      pinConfirmPlaceholder: "Repeat PIN",
+      pinLabel: "4-digit PIN:",
+      pinConfirmLabel: "Confirm PIN:",
       pinMismatch: "The 4-digit PINs do not match.",
       pinInvalidLength: "PIN must be exactly 4 digits.",
       pinIncorrect: "Incorrect PIN entered.",
@@ -333,11 +405,14 @@ const dictionaries: Record<Language, Translations> = {
       budgetSuggested: "💰 Suggested budget:",
       clueFrom: "Clue left by",
       familySecretNote: "Don't tell anyone in the family! Keep it in mind or save a photo.",
+      goldenBadge: "👑 OFFICIAL FAMILY DECREE",
+      goldenTitle: "SURPRISE GOLDEN TICKET!",
+      goldenDecree: "By official family law, your 2nd (and MOST IMPORTANT!) mandatory Secret Santa is:",
+      goldenFooter: "🍼 The boss of the holidays! Nobody gets a pass on bringing their special gift 🎁",
       savePhotoButton: "📸 Save Photo of My Paper",
       savingPhoto: "Saving photo...",
       wishlistQuestion: "🎁 What would you like as a gift?",
-      wishlistSub: "Write a small hint for whoever drew you (e.g., 'sweets, books, or size L socks').",
-      wishlistPlaceholder: "Write your gift hint here...",
+      wishlistSub: "Write a small hint for whoever drew you:",
       saveWishlistButton: "Save my hint",
       wishlistSaved: "Hint saved successfully!",
       backToList: "⬅️ Back to family list",
@@ -404,8 +479,9 @@ export function LanguageSwitcher() {
   return (
     <div className="inline-flex items-center gap-1 bg-[#3d2013] p-1 rounded-xl border border-[#6b3c26] shadow-sm">
       <button
+        type="button"
         onClick={() => setLanguage("es")}
-        className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+        className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
           language === "es"
             ? "bg-[#c83e31] text-white shadow-xs"
             : "text-[#debfa8] hover:text-white"
@@ -415,8 +491,9 @@ export function LanguageSwitcher() {
         🇪🇸 ES
       </button>
       <button
+        type="button"
         onClick={() => setLanguage("en")}
-        className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+        className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
           language === "en"
             ? "bg-[#c83e31] text-white shadow-xs"
             : "text-[#debfa8] hover:text-white"
